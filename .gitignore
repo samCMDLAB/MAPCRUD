@@ -1,4 +1,4 @@
 instance/
 spreadsheets/
 __pycache__/
-
+venv/
