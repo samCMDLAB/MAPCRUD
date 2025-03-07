@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <h1 class="title has-text-centered">Map Setup for {{ filename }}</h1>
+        <div class="box">
+            <form method="post">
+                
+                <!-- Tooltip Column Selection -->
+                <div class="field">
+                    <label class="label">Tooltip Columns (Select multiple)</label>
+                    <div class="control">
+                        <div class="select is-multiple is-fullwidth">
+                            <select name="tooltip_columns" multiple required>
+                                {% for column in columns %}
+                                    <option value="{{ column }}">{{ column }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Latitude Column Selection -->
+                <div class="field">
+                    <label class="label">Latitude Column</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select name="lat_column" required>
+                                {% for column in columns %}
+                                    <option value="{{ column }}">{{ column }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Longitude Column Selection -->
+                <div class="field">
+                    <label class="label">Longitude Column</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select name="lon_column" required>
+                                {% for column in columns %}
+                                    <option value="{{ column }}">{{ column }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Unique ID Column Selection -->
+                <div class="field">
+                    <label class="label">Unique ID Column</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select name="id_column" required>
+                                <option value="">-- Select or Add IDs in Excel --</option>
+                                {% for column in columns %}
+                                    <option value="{{ column }}">{{ column }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <p class="help">If your data lacks a unique ID, add one using Excel (see instructions below).</p>
+                </div>
+
+                <!-- Instructions for Adding Unique IDs in Excel -->
+                <div class="notification is-info">
+                    <strong>How to Add Unique IDs in Excel:</strong>
+                    <p>If your dataset doesn't have a unique ID column, you can generate one in Excel:</p>
+                    <ol>
+                        <li>Insert a new column in your dataset.</li>
+                        <li>In the first row of the new column, enter this formula:
+                            <pre><code>=CONCATENATE("ID-", ROW(A1))</code></pre>
+                        </li>
+                        <li>Press <strong>Enter</strong> and drag the formula down to fill the column.</li>
+                        <li>Copy the column and use "Paste Values" to remove formulas.</li>
+                        <li>Save your file and re-upload it.</li>
+                    </ol>
+                </div>
+
+                <!-- Map Type Selection -->
+                <div class="field">
+                    <label class="label">Map Type</label>
+                    <div class="control">
+                        <label class="radio">
+                            <input type="radio" name="map_type" value="cluster" checked onchange="toggleHeatmapOptions(false)"> Cluster Map
+                        </label>
+                        <label class="radio">
+                            <input type="radio" name="map_type" value="point" onchange="toggleHeatmapOptions(false)"> Point Map
+                        </label>
+                        <label class="radio">
+                            <input type="radio" name="map_type" value="heatmap" onchange="toggleHeatmapOptions(true)"> Heatmap
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Status Marker Option -->
+                <div id="status-section">
+                    <div class="field">
+                        <label class="label">Would you like to add a status marker?</label>
+                        <div class="control">
+                            <label class="radio">
+                                <input type="radio" name="status_marker" value="yes" onchange="toggleStatusFields(true)"> Yes
+                            </label>
+                            <label class="radio">
+                                <input type="radio" name="status_marker" value="no" onchange="toggleStatusFields(false)" checked> No
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="status-options" style="display: none;">
+                        <div class="field">
+                            <label class="label">Enter Status Titles and Choose Colors</label>
+                            <div id="status-inputs">
+                                <div class="field">
+                                    <input type="text" name="status_titles[]" placeholder="Enter status" class="input">
+                                    <input type="color" name="status_colors[]" value="#ff0000">
+                                </div>
+                            </div>
+                            <button type="button" class="button is-small is-info" onclick="addStatusField()">Add Another Status</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <div class="control has-text-centered">
+                        <button class="button is-primary is-medium" type="submit">Submit</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<script>
+    function toggleHeatmapOptions(isHeatmap) {
+        document.getElementById("status-section").style.display = isHeatmap ? "none" : "block";
+    }
+
+    function toggleStatusFields(show) {
+        document.getElementById("status-options").style.display = show ? "block" : "none";
+    }
+
+    function addStatusField() {
+        let container = document.getElementById("status-inputs");
+        let div = document.createElement("div");
+        div.className = "field";
+        div.innerHTML = `
+            <input type="text" name="status_titles[]" placeholder="Enter status" class="input">
+            <input type="color" name="status_colors[]" value="#000000">
+            <button type="button" class="button is-small is-danger" onclick="this.parentElement.remove()">Remove</button>
+        `;
+        container.appendChild(div);
+    }
+</script>
+{% endblock %}
+
+
+

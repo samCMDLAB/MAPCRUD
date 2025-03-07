@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map View</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            position: relative;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        .home-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 999;
+        }
+        .popup-content {
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            padding: 15px;
+            color: #333;
+            font-size: 14px;
+            min-width: 300px;
+            word-wrap: break-word;
+        }
+        .leaflet-popup {
+            max-width: none;
+            min-width: 350px;
+        }
+        textarea, select {
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+
+<div class="home-button" style="display:flex; flex-direction:column; gap:5px;">
+    <a href="/" class="button is-primary">Home</a>
+    <button class="button is-link" id="copyMapLinkBtn">Copy & Share Map Link</button>
+    <button class="button is-info" id="copyPrefilledApiBtn">Copy Prefilled API Link</button>
+</div>
+    
+
+<div class="container">
+    <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+<script> 
+(function () {
+    'use strict';
+
+    document.getElementById('copyMapLinkBtn').addEventListener('click', () => {
+        const mapLink = window.location.href;
+        navigator.clipboard.writeText(mapLink)
+            .then(() => alert("Map link copied!"))
+            .catch(console.error);
+    });
+
+    // Assuming markersData[0] as example, or adjust to your needs:
+    document.getElementById('copyPrefilledApiBtn').addEventListener('click', () => {
+        if (!markersData.length) {
+            alert("No markers data available.");
+            return;
+        }
+
+        const sampleMarker = markersData[0];
+        const apiUrl = `${window.location.origin}/update_point_ext?map=${sampleMarker.mapid}&id=${sampleMarker.id}&status=${encodeURIComponent(sampleMarker.status || "")}&note=${encodeURIComponent(sampleMarker.note || "")}`;
+
+        navigator.clipboard.writeText(apiUrl)
+            .then(() => alert("Prefilled API link copied!"))
+            .catch(console.error);
+    });
+
+
+
+    const markersData = {{ markers_data | tojson | safe }};
+    const heatmapData = {{ heatmap_data | tojson | safe }};
+    const mapType = "{{ map_type }}";
+    const metaStatus = {{ meta_status | tojson | safe }};
+    const defaultStatus = "default";
+
+    const map = initializeMap();
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxNativeZoom: 19,
+        maxZoom: 25
+    }).addTo(map);
+
+    const markerClusterGroup = L.markerClusterGroup();
+    const markersById = {};
+
+    renderMapData();
+
+    map.on('popupopen', attachPopupEvents);
+
+    function initializeMap() {
+        if (markersData.length) {
+            return L.map("map").setView([markersData[0].lat, markersData[0].lon], 10);
+        } else if (heatmapData.length) {
+            return L.map("map").setView([heatmapData[0][0], heatmapData[0][1]], 10);
+        }
+        return L.map("map").setView([0, 0], 2);
+    }
+
+    function renderMapData() {
+        if (mapType === "heatmap" && heatmapData.length) {
+            L.heatLayer(heatmapData, { 
+                radius: 25, 
+                blur: 15, 
+                maxZoom: 17, 
+                gradient: {
+                    0.2: 'blue', 
+                    0.4: 'cyan', 
+                    0.6: 'lime', 
+                    0.8: 'yellow', 
+                    1.0: 'red'
+                } 
+            }).addTo(map);
+        } else if (mapType === "cluster") {
+            renderClusterMarkers();
+        } else {
+            renderRegularMarkers();
+        }
+    }
+
+    function renderClusterMarkers() {
+        markersData.forEach(data => {
+            const marker = createMarker(data);
+            markerClusterGroup.addLayer(marker);
+        });
+
+        markerClusterGroup.on('clusterclick', e => {
+            console.log('Cluster clicked:', e.layer.getAllChildMarkers());
+        });
+
+        map.addLayer(markerClusterGroup);
+    }
+
+    function renderRegularMarkers() {
+        markersData.forEach(data => {
+            const marker = createMarker(data);
+            marker.addTo(map);
+        });
+    }
+
+    function createMarker(data) {
+        const status = data.status in metaStatus ? data.status : defaultStatus;
+        const marker = L.circleMarker([data.lat, data.lon], {
+            radius: 6,
+            color: metaStatus[status] || "gray",
+            fillOpacity: 0.8
+        });
+
+        marker.bindPopup(generatePopupContent(data, status));
+        markersById[data.id] = marker;
+
+        marker.on('click', () => {
+            console.log("Marker clicked:", data);
+        });
+
+        return marker;
+    }
+
+    function generatePopupContent(data, currentStatus) {
+        const details = data.tooltip ?
+            Object.entries(data.tooltip)
+                .map(([k, v]) => `<p><strong>${k}:</strong> ${v}</p>`).join('') :
+            "<p>No details available</p>";
+
+        const statusOptions = metaStatus ?
+            Object.keys(metaStatus)
+                .map(key => `<option value="${key}" ${currentStatus === key ? "selected" : ""}>${key}</option>`).join('') :
+            `<option value="${defaultStatus}" selected>${defaultStatus}</option>`;
+
+        const noteValue = data.note || "";
+
+        return `
+        <div class="popup-content">
+            <div class="popup-details">${details}</div>
+            <div>
+                <strong>Status:</strong>
+                <select class="status-dropdown" data-markerid="${data.id}" data-mapid="${data.mapid}">
+                    ${statusOptions}
+                </select>
+            </div>
+            <div>
+                <strong>Note:</strong>
+                <textarea class="note-field" data-markerid="${data.id}" data-mapid="${data.mapid}">${noteValue}</textarea>
+            </div>
+        </div>`;
+    }
+
+    function attachPopupEvents(e) {
+        const popup = e.popup._contentNode;
+
+        const statusDropdown = popup.querySelector('.status-dropdown');
+        if (statusDropdown) {
+            statusDropdown.addEventListener('change', event => {
+                const markerId = event.target.dataset.markerid;
+                const mapId = event.target.dataset.mapid;
+                const newStatus = event.target.value;
+
+                markersById[markerId].setStyle({ color: metaStatus[newStatus] || "gray" });
+
+                fetch('/update_point', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: markerId, map_id: mapId, status: newStatus })
+                })
+                .then(res => res.json())
+                .then(console.log)
+                .catch(console.error);
+            });
+        }
+
+        const noteField = popup.querySelector('.note-field');
+        if (noteField) {
+            noteField.addEventListener('change', event => {
+                const markerId = event.target.dataset.markerid;
+                const mapId = event.target.dataset.mapid;
+                const noteValue = event.target.value;
+
+                fetch('/update_point', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: markerId, map_id: mapId, note: noteValue })
+                })
+                .then(res => res.json())
+                .then(console.log)
+                .catch(console.error);
+            });
+        }
+    }
+})();
+</script>
+</body>
+</html>

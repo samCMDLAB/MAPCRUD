@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %} Upload - Flask App {% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <div class="box">
+            <h2 class="title is-4 has-text-centered">Upload a Spreadsheet</h2>
+            <h3 class="subtitle has-text-centered">
+                Upload your file here. If the file does not have latitude or longitude columns, go to 
+                <a href="https://www.geocod.io/upload/" target="_blank">https://www.geocod.io/upload/</a> 
+                and upload your file (under 2500 lines is free), then come back with the lat and lon.
+            </h3>
+            <form action="/upload" method="post" enctype="multipart/form-data">
+                <div class="field">
+                    <div class="file has-name is-fullwidth">
+                        <label class="file-label">
+                            <input class="file-input" type="file" name="file" required>
+                            <span class="file-cta">
+                                <span class="icon">
+                                    📁
+                                </span>
+                                <span class="file-label">Choose a file…</span>
+                            </span>
+                            <span class="file-name">No file selected</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="field has-text-centered">
+                    <button class="button is-primary">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<script>
+    // Update file name when a file is selected
+    document.querySelector('.file-input').addEventListener('change', function(event) {
+        const fileName = event.target.files[0] ? event.target.files[0].name : 'No file selected';
+        document.querySelector('.file-name').textContent = fileName;
+    });
+</script>
+{% endblock %}
+
