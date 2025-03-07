@@ -1,0 +1,5 @@
+Flask
+Flask-SQLAlchemy
+folium
+MarkupSafe
+Pandas 
